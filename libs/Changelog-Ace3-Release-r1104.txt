@@ -1,0 +1,39 @@
+------------------------------------------------------------------------
+r1104 | nevcairiel | 2013-10-31 08:51:45 +0000 (Thu, 31 Oct 2013) | 1 line
+Changed paths:
+   A /tags/Release-r1104 (from /trunk:1103)
+
+Tag as Release-r1104
+------------------------------------------------------------------------
+r1103 | nevcairiel | 2013-10-31 08:51:02 +0000 (Thu, 31 Oct 2013) | 1 line
+Changed paths:
+   M /trunk/changelog.txt
+
+Update changelog
+------------------------------------------------------------------------
+r1102 | nevcairiel | 2013-10-25 14:15:23 +0000 (Fri, 25 Oct 2013) | 1 line
+Changed paths:
+   M /trunk/AceGUI-3.0/AceGUI-3.0.lua
+
+AceGUI-3.0: Prevent an infinite layout loop in the Flow layout when a widget changes its height when its width is set
+------------------------------------------------------------------------
+r1101 | nevcairiel | 2013-10-25 12:46:47 +0000 (Fri, 25 Oct 2013) | 1 line
+Changed paths:
+   M /trunk/AceGUI-3.0/widgets/AceGUIWidget-DropDown.lua
+
+AceGUI-3.0: Dropdown: Add a callback when the dropdown was opened
+------------------------------------------------------------------------
+r1100 | nevcairiel | 2013-10-21 08:06:03 +0000 (Mon, 21 Oct 2013) | 1 line
+Changed paths:
+   M /trunk/AceGUI-3.0/widgets/AceGUIWidget-DropDown.lua
+
+AceGUI-3.0: Dropdown: Add an API to specify the width of the pullout frame
+------------------------------------------------------------------------
+r1099 | nevcairiel | 2013-10-21 07:36:40 +0000 (Mon, 21 Oct 2013) | 3 lines
+Changed paths:
+   M /trunk/AceGUI-3.0/widgets/AceGUIWidget-DropDown.lua
+
+AceGUI-3.0: Cosmetics: Move the Dropdown Label a bit closer to the dropdown box itself
+
+This better matches the layout of Blizzards Dropdown boxes
+------------------------------------------------------------------------
