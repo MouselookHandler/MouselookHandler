@@ -1,8 +1,8 @@
-## Interface: 50300
+## Interface: 50400
 ## Title: MouselookHandler
 ## Notes: Allows controlling when mouselook is started and stopped.
 ## Author: meribold (Lukas Waymann)
-## Version: 1.2
+## Version: 1.2.1
 ## SavedVariables: MouselookHandlerDB
 
 embeds.xml
