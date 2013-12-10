@@ -1,6 +1,8 @@
 _G["BINDING_HEADER_MOUSELOOKHANDLER"] = "Mouselook Handler"
 _G["BINDING_NAME_INVERTMOUSELOOK"] = "Invert Mouselook"
 _G["BINDING_NAME_TOGGLEMOUSELOOK"] = "Toggle Mouselook"
+_G["BINDING_NAME_LOCKMOUSELOOK"] = "Lock Mouselook"
+_G["BINDING_NAME_UNLOCKMOUSELOOK"] = "Unlock Mouselook"
 
 MouselookHandler = LibStub("AceAddon-3.0"):NewAddon("MouselookHandler", "AceConsole-3.0")
 MouselookHandler._G = _G
@@ -14,6 +16,8 @@ local LibStub = _G.LibStub
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
+local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 local IsMouselooking = _G.IsMouselooking
 local MouselookStart, MouselookStop = _G.MouselookStart, _G.MouselookStop
@@ -32,7 +36,7 @@ enabled = false
 inverted = false
 
 local function defer()
-  if not db.global.useDeferWorkaround then return end
+  if not db.profile.useDeferWorkaround then return end
   for i=1,5 do
     if _G.IsMouseButtonDown(i) then return true end
   end
@@ -42,7 +46,7 @@ end
 -- match up with this mods saved state.
 local function rematch()
   if defer() then return end
-  if db.global.useSpellTargetingOverride and _G.SpellIsTargeting() then
+  if db.profile.useSpellTargetingOverride and _G.SpellIsTargeting() then
     MouselookStop(); return
   end
   if turnOrActionActive or cameraOrSelectOrMoveActive then return end
@@ -77,6 +81,16 @@ end
 
 function toggle()
   enabled = not enabled
+  update()
+end
+
+function lock()
+  enabled = true
+  update()
+end
+
+function unlock()
+  enabled = false
   update()
 end
 
@@ -131,19 +145,65 @@ handlerFrame:RegisterEvent("ADDON_LOADED")
 -- < in-game configuration UI code > -------------------------------------------
 --------------------------------------------------------------------------------
 
-local function setUseOverrideBindings(info, val)
-  db.global.useOverrideBindings = val
-  if val then
-    SetMouselookOverrideBinding("BUTTON1", "STRAFELEFT")
-    SetMouselookOverrideBinding("BUTTON2", "STRAFERIGHT")
+local function applyOverrideBinding(button)
+  if db.profile.useOverrideBindings then
+    local binding = db.profile.mouseOverrideBindings[button]
+    SetMouselookOverrideBinding(button, binding and binding or nil)
   else
-    SetMouselookOverrideBinding("BUTTON1", _G.GetBindingAction("BUTTON1", false))
-    SetMouselookOverrideBinding("BUTTON2", _G.GetBindingAction("BUTTON2", false))
+    SetMouselookOverrideBinding(button, nil)
   end
 end
 
+local function applyUseOverrideBindings(info, val)
+  applyOverrideBinding("BUTTON1")
+  applyOverrideBinding("BUTTON2")
+  applyOverrideBinding("BUTTON3")
+end
+
+local function setUseOverrideBindings(info, val)
+  db.profile.useOverrideBindings = val
+  applyUseOverrideBindings()
+end
+
 local function getUseOverrideBindings(info)
-  return db.global.useOverrideBindings
+  return db.profile.useOverrideBindings
+end
+
+local function setOverrideBinding(info, val)
+  local bindingname = info[#info]
+  if val == "false" then
+    val = nil
+  end
+  db.profile.mouseOverrideBindings[bindingname] = val
+  applyUseOverrideBindings()
+end
+
+local function getOverrideBinding(info)
+  local bindingname = info[#info]
+  local val = db.profile.mouseOverrideBindings[bindingname]
+  if not val then
+    val = "false"
+  end
+  return val
+end
+
+local function getOverrideBindingChoices(info)
+  local bindings = {
+    "UNLOCKMOUSELOOK",
+    "MOVEFORWARD",
+    "MOVEBACKWARD",
+    "TOGGLEAUTORUN",
+    "STRAFELEFT",
+    "STRAFERIGHT"
+  }
+  local values = {
+    ["false"] = "<DEFAULT>",
+  }
+  for ii, binding in _G.ipairs(bindings) do
+    local val = _G.GetBindingText(binding, "BINDING_NAME_")
+    values[binding] = val
+  end
+  return values
 end
 
 local function validateCustomFunction(info, input)
@@ -168,35 +228,35 @@ local function validateCustomFunction(info, input)
 end
 
 local function setCustomFunction(info, input)
-  db.global.customFunction = input
+  db.profile.customFunction = input
 end
 
 local function getCustomFunction(info)
-  return db.global.customFunction
+  return db.profile.customFunction
 end
 
 local function setMacroText(info, input)
   _G.RegisterStateDriver(stateHandler, "mouselookstate", input)
-  db.global.macroText = input
+  db.profile.macroText = input
 end
 
 local function getMacroText(info)
-  return db.global.macroText
+  return db.profile.macroText
 end
 
 local function setEventList(info, input)
-  for event in _G.string.gmatch(db.global.eventList, "[^%s]+") do
+  for event in _G.string.gmatch(db.profile.eventList, "[^%s]+") do
     customEventFrame:UnregisterEvent(event)
   end
   for event in _G.string.gmatch(input, "[^%s]+") do
     customEventFrame:RegisterEvent(event)
   end
 
-  db.global.eventList = input
+  db.profile.eventList = input
 end
 
 local function getEventList(info)
-  return db.global.eventList
+  return db.profile.eventList
 end
 
 local deferText = [[When clicking and holding any mouse button while ]]
@@ -223,11 +283,12 @@ local options = {
   type = "group",
   name = "MouselookHandler Options",
   handler = MouselookHandler,
+  childGroups = "tree",
   args = {
     general = {
       type = "group",
       name = "General",
-      order = 0,
+      order = 2,
       args = {
         deferHeader = {
           type = "header",
@@ -244,8 +305,8 @@ local options = {
           type = "toggle",
           name = "Enable defer workaround",
           width = "full",
-          set = function(info, val) db.global.useDeferWorkaround = val end,
-          get = function(info) return db.global.useDeferWorkaround  end,
+          set = function(info, val) db.profile.useDeferWorkaround = val end,
+          get = function(info) return db.profile.useDeferWorkaround  end,
           order = 2,
         },
         bindHeader = {
@@ -282,8 +343,8 @@ local options = {
           type = "toggle",
           name = "Enable",
           width = "full",
-          set = function(info, val) db.global.useSpellTargetingOverride = val end,
-          get = function(info) return db.global.useSpellTargetingOverride end,
+          set = function(info, val) db.profile.useSpellTargetingOverride = val end,
+          get = function(info) return db.profile.useSpellTargetingOverride end,
           order = 8,
         },
       },
@@ -291,7 +352,7 @@ local options = {
     binds = {
       type = "group",
       name = "Keybindings",
-      order = 1,
+      order = 3,
       args = {
         toggleHeader = {
           type = "header",
@@ -345,12 +406,139 @@ local options = {
           get = function(info) return (_G.GetBindingKey("INVERTMOUSELOOK")) end,
           order = 5,
         },
+        lockHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_LOCKMOUSELOOK"],
+          order = 6,
+        },
+        lockDescription = {
+          type = "description",
+          name = "Lock the mouselook state on key up.",
+          width = "double",
+          fontSize = "medium",
+          order = 7,
+        },
+        lock = {
+          type = "keybinding",
+          name = "",
+          desc = "Lock the mouselook state on key up.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("LOCKMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "LOCKMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("LOCKMOUSELOOK")) end,
+          order = 8,
+        },
+        unlockHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_UNLOCKMOUSELOOK"],
+          order = 9,
+        },
+        unlockDescription = {
+          type = "description",
+          name = "Unlock the mouselook state on key up.",
+          width = "double",
+          fontSize = "medium",
+          order = 10,
+        },
+        unlock = {
+          type = "keybinding",
+          name = "",
+          desc = "Unlock the mouselook state on key up.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("UNLOCKMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "UNLOCKMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("UNLOCKMOUSELOOK")) end,
+          order = 11,
+        },
+        button1Header = {
+          type = "header",
+          name = "Mouselook Button Overrides",
+          order = 12,
+        },
+        overrideEnableToggle = {
+          type = "toggle",
+          name = "Enable override bindings",
+          width = "full",
+          set = setUseOverrideBindings,
+          get = getUseOverrideBindings,
+          order = 21,
+        },
+        BUTTON1Description = {
+          type = "description",
+          name = "Mouselook Override BUTTON1",
+          width = "normal",
+          fontSize = "small",
+          order = 30,
+        },
+        BUTTON1 = {
+          type = "select",
+          style = "dropdown",
+          name = "",
+          desc = "Select the mouselook override for button 1.",
+          width = "normal",
+          values = getOverrideBindingChoices,
+          set = setOverrideBinding,
+          get = getOverrideBinding,
+          disabled = function()
+            return not getUseOverrideBindings()
+          end,
+          order = 31,
+        },
+        BUTTON1Spacing = {type = "description", order = 39, name = ""},
+        BUTTON2Description = {
+          type = "description",
+          name = "Mouselook Override BUTTON2",
+          width = "normal",
+          order = 40,
+        },
+        BUTTON2 = {
+          type = "select",
+          style = "dropdown",
+          name = "",
+          desc = "Select the mouselook override for button 2.",
+          values = getOverrideBindingChoices,
+          set = setOverrideBinding,
+          get = getOverrideBinding,
+          disabled = function()
+            return not getUseOverrideBindings()
+          end,
+          order = 41,
+        },
+        BUTTON2Spacing = {type = "description", order = 49, name = ""},
+        BUTTON3Description = {
+          type = "description",
+          name = "Mouselook Override BUTTON3",
+          width = "normal",
+          order = 50,
+        },
+        BUTTON3 = {
+          type = "select",
+          style = "dropdown",
+          name = "",
+          desc = "Select the mouselook override for button 3.",
+          width = "normal",
+          values = getOverrideBindingChoices,
+          set = setOverrideBinding,
+          get = getOverrideBinding,
+          disabled = function()
+            return not getUseOverrideBindings()
+          end,
+          order = 51,
+        },
       },
     },
     advanced = {
       type = "group",
       name = "Advanced",
-      order = 2,
+      order = 4,
       args = {
         header1 = {
           type = "header",
@@ -417,10 +605,10 @@ local options = {
           confirm = true,
           confirmText = "Your customizations will be removed. Continue?",
           func = function()
-                   setEventList(nil, databaseDefaults.global.eventList)
-                   setMacroText(nil, databaseDefaults.global.macroText)
-                   if validateCustomFunction(nil, databaseDefaults.global.customFunction) == true then
-                     setCustomFunction(nil, databaseDefaults.global.customFunction)
+                   setEventList(nil, databaseDefaults.profile.eventList)
+                   setMacroText(nil, databaseDefaults.profile.macroText)
+                   if validateCustomFunction(nil, databaseDefaults.profile.customFunction) == true then
+                     setCustomFunction(nil, databaseDefaults.profile.customFunction)
                    end
                  end,
           order = 6,
@@ -428,6 +616,7 @@ local options = {
         advanced1 = {
           type = "group",
           name = "Lua chunk",
+          inline = true,
           order = 4,
           args = {
             header1 = {
@@ -479,17 +668,21 @@ local options = {
 --------------------------------------------------------------------------------
 
 databaseDefaults = {
-  ["global"] = {
+  ["profile"] = {
     ["newUser"] = true,
     ["useSpellTargetingOverride"] = true,
     ["useDeferWorkaround"] = true,
     ["useOverrideBindings"] = true,
+    ["mouseOverrideBindings"] = {
+        ["BUTTON1"] = "STRAFELEFT",
+        ["BUTTON2"] = "STRAFERIGHT",
+    },
     macroText = "",
     eventList = ""
   },
 }
 
-databaseDefaults.global.customFunction = [[
+databaseDefaults.profile.customFunction = [[
 function MouselookHandler:predFun(enabled, inverted, clauseText, event, ...)
   return (enabled and not inverted) or
     (not enabled and inverted)
@@ -502,23 +695,34 @@ function MouselookHandler:OnInitialize()
   -- The ".toc" need say "## SavedVariables: MouselookHandlerDB".
   self.db = LibStub("AceDB-3.0"):New("MouselookHandlerDB", databaseDefaults, true)
 
-  if db.global.newUser then
+  if db.profile.newUser then
     MouselookHandler:Print("This seems to be your first time using this AddOn. To get started " ..
       "you should bring up the configuration UI (/mh) and assign keys to the two actions " ..
       "provided.")
   end
 
-  if db.global.useOverrideBindings then
-    SetMouselookOverrideBinding("BUTTON1", "STRAFELEFT")
-    SetMouselookOverrideBinding("BUTTON2", "STRAFERIGHT")
-  end
+  self.db.RegisterCallback(self, "OnProfileChanged", "RefreshDB")
+  self.db.RegisterCallback(self, "OnProfileCopied", "RefreshDB")
+  self.db.RegisterCallback(self, "OnProfileReset", "RefreshDB")
+  self:RefreshDB()
 
-  if validateCustomFunction(nil, db.global.customFunction) == true then
-    setCustomFunction(nil, db.global.customFunction)
+  if validateCustomFunction(nil, db.profile.customFunction) == true then
+    setCustomFunction(nil, db.profile.customFunction)
   end
 
   -- See: wowace.com/addons/ace3/pages/getting-started/#w-registering-the-options
   AceConfig:RegisterOptionsTable("MouselookHandler", options)
+
+  local profiles = AceDBOptions:GetOptionsTable(self.db)
+  AceConfigRegistry:RegisterOptionsTable("MouselookHandler_Profiles", profiles)
+
+  local configFrame = AceConfigDialog:AddToBlizOptions("MouselookHandler", "MouselookHandler", nil, "general")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.binds.name, "MouselookHandler", "binds")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.advanced.name, "MouselookHandler", "advanced")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler_Profiles", profiles.name, "MouselookHandler")
+  configFrame.default = function()
+    self.db:ResetProfile()
+  end
 
   --------------------------------------------------------------------------------------------------
   stateHandler = _G.CreateFrame("Frame", modName .. "stateHandler", UIParent, "SecureHandlerStateTemplate")
@@ -529,27 +733,34 @@ function MouselookHandler:OnInitialize()
   stateHandler:SetAttribute("_onstate-mouselookstate", [[
     self:CallMethod("onMouselookState", newstate)
   ]])
-  _G.RegisterStateDriver(stateHandler, "mouselookstate", db.global.macroText)
+  _G.RegisterStateDriver(stateHandler, "mouselookstate", db.profile.macroText)
   ------------------------------------------------------------------------------
   customEventFrame = _G.CreateFrame("Frame", modName .. "customEventFrame")
   customEventFrame:SetScript("OnEvent", function(self, event, ...)
     _G["MouselookHandler"].update(event, ...)
   end)
-  for event in _G.string.gmatch(db.global.eventList, "[^%s]+") do
+  for event in _G.string.gmatch(db.profile.eventList, "[^%s]+") do
     customEventFrame:RegisterEvent(event)
   end
   --------------------------------------------------------------------------------------------------
 
   local function toggleOptionsUI()
     if not _G.InCombatLockdown() then
-      AceConfigDialog:Open("MouselookHandler")
-      db.global.newUser = false
+      _G.InterfaceOptionsFrame_OpenToCategory(configFrame)
+      -- Called twice to workaround UI bug
+      _G.InterfaceOptionsFrame_OpenToCategory(configFrame)
+      db.profile.newUser = false
     end
   end
   self:RegisterChatCommand("mouselookhandler", toggleOptionsUI)
   self:RegisterChatCommand("mh", toggleOptionsUI)
 
   update()
+end
+
+function MouselookHandler:RefreshDB()
+    MouselookHandler:Print("Refreshing DB Profile")
+    applyUseOverrideBindings()
 end
 
 -- Called by AceAddon.
