@@ -702,6 +702,18 @@ local function migrateLegacyGlobalPreferences()
     "eventList",
     "customFunction",
   }
+
+  -- First check if they have already customized the default profile
+  local defaultProfileUnmodified = false
+  if curProfile == "Default" then
+    defaultProfileUnmodified = true
+    for _, key in _G.pairs(legacyGlobalKeys) do
+      if db.profile[key] ~= databaseDefaults.profile[key] then
+        defaultProfileUnmodified = false
+      end
+    end
+  end
+
   -- If they have any global settings which don't match the default put it in a Legacy profile
   for _, key in _G.pairs(legacyGlobalKeys) do
     if db.global[key] ~= nil and db.global[key] ~= databaseDefaults.profile[key] then
@@ -710,32 +722,23 @@ local function migrateLegacyGlobalPreferences()
     end
     db.global[key] = nil
   end
-  if db:GetCurrentProfile() == "Legacy" and curProfile == "Default" then
+
+  if db:GetCurrentProfile() == "Legacy" then
     db:SetProfile(curProfile)
-    -- If they haven't already customized the default profile then copy Legacy over
-    local copyProfile = true
-    for _, key in _G.pairs(legacyGlobalKeys) do
-      if db.profile[key] ~= databaseDefaults.profile[key] then
-        copyProfile = false
-      end
-    end
-    if copyProfile then
+    -- If the default profile is unmodified then copy Legacy over
+    if defaultProfileUnmodified then
       db:CopyProfile("Legacy")
     end
-  else
-    db:SetProfile(curProfile)
   end
 end
 
 -- Called by AceAddon on ADDON_LOADED?
 -- See: wowace.com/addons/ace3/pages/getting-started/#w-standard-methods
 function MouselookHandler:OnInitialize()
-  local ADDON_NAME = "MouselookHandler"
-
   -- The ".toc" need say "## SavedVariables: MouselookHandlerDB".
   self.db = LibStub("AceDB-3.0"):New("MouselookHandlerDB", databaseDefaults, true)
 
-  local currentVersion = _G.GetAddOnMetadata(ADDON_NAME, "Version")
+  local currentVersion = _G.GetAddOnMetadata(modName, "Version")
   if not self.db.global.version then
     migrateLegacyGlobalPreferences()
   end
@@ -757,15 +760,15 @@ function MouselookHandler:OnInitialize()
   end
 
   -- See: wowace.com/addons/ace3/pages/getting-started/#w-registering-the-options
-  AceConfig:RegisterOptionsTable(ADDON_NAME, options)
+  AceConfig:RegisterOptionsTable(modName, options)
 
   local profiles = AceDBOptions:GetOptionsTable(self.db)
-  AceConfigRegistry:RegisterOptionsTable(ADDON_NAME .. "_Profiles", profiles)
+  AceConfigRegistry:RegisterOptionsTable(modName .. "_Profiles", profiles)
 
-  local configFrame = AceConfigDialog:AddToBlizOptions(ADDON_NAME, "MouselookHandler", nil, "general")
-  AceConfigDialog:AddToBlizOptions(ADDON_NAME, options.args.binds.name, "MouselookHandler", "binds")
-  AceConfigDialog:AddToBlizOptions(ADDON_NAME, options.args.advanced.name, "MouselookHandler", "advanced")
-  AceConfigDialog:AddToBlizOptions(ADDON_NAME .. "_Profiles", profiles.name, "MouselookHandler")
+  local configFrame = AceConfigDialog:AddToBlizOptions(modName, "MouselookHandler", nil, "general")
+  AceConfigDialog:AddToBlizOptions(modName, options.args.binds.name, "MouselookHandler", "binds")
+  AceConfigDialog:AddToBlizOptions(modName, options.args.advanced.name, "MouselookHandler", "advanced")
+  AceConfigDialog:AddToBlizOptions(modName .. "_Profiles", profiles.name, "MouselookHandler")
   configFrame.default = function()
     self.db:ResetProfile()
   end
