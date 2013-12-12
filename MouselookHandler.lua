@@ -1,8 +1,8 @@
-_G["BINDING_HEADER_MOUSELOOKHANDLER"] = "Mouselook Handler"
-_G["BINDING_NAME_INVERTMOUSELOOK"] = "Invert Mouselook"
-_G["BINDING_NAME_TOGGLEMOUSELOOK"] = "Toggle Mouselook"
-_G["BINDING_NAME_LOCKMOUSELOOK"] = "Lock Mouselook"
-_G["BINDING_NAME_UNLOCKMOUSELOOK"] = "Unlock Mouselook"
+_G["BINDING_HEADER_MOUSELOOKHANDLER"] = "MouselookHandler"
+_G["BINDING_NAME_INVERTMOUSELOOK"]    = "Invert Mouselook"
+_G["BINDING_NAME_TOGGLEMOUSELOOK"]    = "Toggle Mouselook"
+_G["BINDING_NAME_LOCKMOUSELOOK"]      = "Enable Mouselook"
+_G["BINDING_NAME_UNLOCKMOUSELOOK"]    = "Disable Mouselook"
 
 MouselookHandler = LibStub("AceAddon-3.0"):NewAddon("MouselookHandler", "AceConsole-3.0")
 MouselookHandler._G = _G
@@ -21,29 +21,28 @@ local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 local IsMouselooking = _G.IsMouselooking
 local MouselookStart, MouselookStop = _G.MouselookStart, _G.MouselookStop
-local SetMouselookOverrideBinding = _G.SetMouselookOverrideBinding
 
-modName = "MouselookHandler"
+local modName = "MouselookHandler"
 
-local customFunction = nil
-function MouselookHandler:predFun() return false end
-local stateHandler, customEventFrame = nil, nil
+local customFunction, stateHandler, customEventFrame
+function MouselookHandler:predFun()
+  return false
+end
 
 turnOrActionActive, cameraOrSelectOrMoveActive = false, false
 clauseText = nil
 
-enabled = false
-inverted = false
+enabled, inverted = false, false
 
 local function defer()
   if not db.profile.useDeferWorkaround then return end
-  for i=1,5 do
+  for i = 1, 5 do
     if _G.IsMouseButtonDown(i) then return true end
   end
 end
 
--- Starts ans stops mouselook if the API function IsMouselooking() doesn't
--- match up with this mods saved state.
+-- Starts and stops mouselook if the API function IsMouselooking() doesn't match up with this mods
+-- saved state.
 local function rematch()
   if defer() then return end
   if db.profile.useSpellTargetingOverride and _G.SpellIsTargeting() then
@@ -132,9 +131,9 @@ function handlerFrame:PLAYER_LOGIN()
 end
 
 function handlerFrame:ADDON_LOADED()
-  --_G.print("Mouselook Handler loaded!")
+  --_G.print("MouselookHandler loaded!")
   self:UnregisterEvent("ADDON_LOADED")
-  --self.ADDON_LOADED = nil
+  self.ADDON_LOADED = nil
 end
 
 handlerFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -145,83 +144,51 @@ handlerFrame:RegisterEvent("ADDON_LOADED")
 -- < in-game configuration UI code > -------------------------------------------
 --------------------------------------------------------------------------------
 
-local function applyOverrideBinding(button)
+local function applyOverrideBindings(info, val)
   if db.profile.useOverrideBindings then
-    local binding = db.profile.mouseOverrideBindings[button]
-    SetMouselookOverrideBinding(button, binding and binding or nil)
+    for key, command in _G.pairs(db.profile.mouseOverrideBindings) do
+      _G.SetMouselookOverrideBinding(key, command == "" and nil or command)
+    end
   else
-    SetMouselookOverrideBinding(button, nil)
+    for key, _ in _G.pairs(db.profile.mouseOverrideBindings) do
+      _G.SetMouselookOverrideBinding(key, nil)
+    end
   end
-end
-
-local function applyUseOverrideBindings(info, val)
-  applyOverrideBinding("BUTTON1")
-  applyOverrideBinding("BUTTON2")
-  applyOverrideBinding("BUTTON3")
 end
 
 local function setUseOverrideBindings(info, val)
   db.profile.useOverrideBindings = val
-  applyUseOverrideBindings()
+  applyOverrideBindings()
 end
 
 local function getUseOverrideBindings(info)
   return db.profile.useOverrideBindings
 end
 
-local function setOverrideBinding(info, val)
-  local bindingname = info[#info]
-  if val == "false" then
-    val = nil
-  end
-  db.profile.mouseOverrideBindings[bindingname] = val
-  applyUseOverrideBindings()
+-- "Hint: Use info[#info] to get the leaf node name, info[#info-1] for the parent, and so on!"
+-- http://www.wowace.com/addons/ace3/pages/ace-config-3-0-options-tables/#w-callback-arguments
+
+local suggestedCommands = {}
+for _, v in _G.ipairs({"UNLOCKMOUSELOOK", "MOVEFORWARD", "MOVEBACKWARD", "TOGGLEAUTORUN",
+  "STRAFELEFT", "STRAFERIGHT"}) do
+  suggestedCommands[v] = _G.GetBindingText(v, "BINDING_NAME_")
 end
 
-local function getOverrideBinding(info)
-  local bindingname = info[#info]
-  local val = db.profile.mouseOverrideBindings[bindingname]
-  if not val then
-    val = "false"
-  end
-  return val
-end
-
-local function getOverrideBindingChoices(info)
-  local bindings = {
-    "UNLOCKMOUSELOOK",
-    "MOVEFORWARD",
-    "MOVEBACKWARD",
-    "TOGGLEAUTORUN",
-    "STRAFELEFT",
-    "STRAFERIGHT"
-  }
-  local values = {
-    ["false"] = "<DEFAULT>",
-  }
-  for ii, binding in _G.ipairs(bindings) do
-    local val = _G.GetBindingText(binding, "BINDING_NAME_")
-    values[binding] = val
-  end
-  return values
-end
+-- The key in the "Override bindings" section of the options frame that's currently being
+-- configured.
+local selectedKey
 
 local function validateCustomFunction(info, input)
-  --local chunk, errorMessage = _G.loadstring("return " .. input)
   local chunk, errorMessage = _G.loadstring(input)
   if not chunk then
     MouselookHandler:Print(errorMessage)
     return errorMessage
   else
-    --local f = chunk()
     chunk()
-    --if _G.type(f) ~= "function" then
     if _G.type(predFun) ~= "function" then
       MouselookHandler:Print("Your Lua code should define a function \'MouselookHandler:predFun\'!")
-      --return "Your Lua code should be an unnamed function!"
       return "Your Lua code should define a function \'MouselookHandler:predFun\'!"
     else
-      --customFunction = f
       return true
     end
   end
@@ -251,13 +218,15 @@ local function setEventList(info, input)
   for event in _G.string.gmatch(input, "[^%s]+") do
     customEventFrame:RegisterEvent(event)
   end
-
   db.profile.eventList = input
 end
 
 local function getEventList(info)
   return db.profile.eventList
 end
+
+-- Array containing all the keys from db.profile.mouseOverrideBindings.
+local overrideKeys = {}
 
 local deferText = [[When clicking and holding any mouse button while ]]
   .. [[mouselooking, but only releasing it after stopping mouselooking, the ]]
@@ -271,11 +240,8 @@ local deferText = [[When clicking and holding any mouse button while ]]
   .. [[    This setting will cause slightly less obnoxious behavior: it will ]]
   .. [[defer stopping mouselook until all mouse buttons have been released.]]
 
-local bindText = [[Assign the "STRAFELEFT" and "STRAFERIGHT" actions to ]]
-  .. [["BUTTON1" (left mouse button) and "BUTTON2" (right mouse button), ]]
-  .. [[respectively.]] .. '\n'
-  .. [[    While not mouselooking through this Addon those bindings don't ]]
-  .. [[apply.]]
+local bindText = [[Enable to define a set of keybindings that only apply while mouselooking. ]]
+  .. [[For example, you could strafe with the left (BUTTON1) and right (BUTTON2) mouse buttons.]]
 
 local spellTargetingOverrideText = [[Disable mouselook while a spell is awaiting a target.]]
 
@@ -288,7 +254,7 @@ local options = {
     general = {
       type = "group",
       name = "General",
-      order = 2,
+      order = 100,
       args = {
         deferHeader = {
           type = "header",
@@ -308,25 +274,6 @@ local options = {
           set = function(info, val) db.profile.useDeferWorkaround = val end,
           get = function(info) return db.profile.useDeferWorkaround  end,
           order = 2,
-        },
-        bindHeader = {
-          type = "header",
-          name = "Strafe with left and right mouse while mouselooking",
-          order = 3,
-        },
-        bindDescription = {
-          type = "description",
-          name = bindText,
-          fontSize = "medium",
-          order = 4,
-        },
-        bindToggle = {
-          type = "toggle",
-          name = "Enable override bindings",
-          width = "full",
-          set = setUseOverrideBindings,
-          get = getUseOverrideBindings,
-          order = 5,
         },
         spellTargetingOverrideHeader = {
           type = "header",
@@ -349,196 +296,172 @@ local options = {
         },
       },
     },
-    binds = {
+    overrideBindings = {
       type = "group",
-      name = "Keybindings",
-      order = 3,
+      name = "Override bindings",
+      order = 110,
       args = {
-        toggleHeader = {
+        overrideBindingsHeader = {
           type = "header",
-          name = _G["BINDING_NAME_TOGGLEMOUSELOOK"],
-          order = 0,
+          name = "Mouselook override bindings",
+          order = 100,
         },
-        toggleDescription = {
+        overrideBindingsDescription = {
           type = "description",
-          name = "Toggles the default mouselook state on key up.",
-          width = "double",
+          name = bindText,
           fontSize = "medium",
-          order = 1,
+          order = 110,
         },
-        toggle = {
-          type = "keybinding",
-          name = "",
-          desc = "Toggles the default mouselook state on key up.",
-          width = "half",
-          set = function(info, key)
-                  local oldKey = (_G.GetBindingKey("TOGGLEMOUSELOOK"))
-                  if oldKey then _G.SetBinding(oldKey) end
-                  _G.SetBinding(key, "TOGGLEMOUSELOOK")
-                  _G.SaveBindings(_G.GetCurrentBindingSet())
-                end,
-          get = function(info) return (_G.GetBindingKey("TOGGLEMOUSELOOK")) end,
-          order = 2,
-        },
-        invertHeader = {
-          type = "header",
-          name = _G["BINDING_NAME_INVERTMOUSELOOK"],
-          order = 3,
-        },
-        invertDescription = {
-          type = "description",
-          name = "Inverts mouselook while the key is being held.",
-          width = "double",
-          fontSize = "medium",
-          order = 4,
-        },
-        invert = {
-          type = "keybinding",
-          name = "",
-          desc = "Inverts mouselook while the key is being held.",
-          width = "half",
-          set = function(info, key)
-                  local oldKey = (_G.GetBindingKey("INVERTMOUSELOOK"))
-                  if oldKey then _G.SetBinding(oldKey) end
-                  _G.SetBinding(key, "INVERTMOUSELOOK")
-                  _G.SaveBindings(_G.GetCurrentBindingSet())
-                end,
-          get = function(info) return (_G.GetBindingKey("INVERTMOUSELOOK")) end,
-          order = 5,
-        },
-        lockHeader = {
-          type = "header",
-          name = _G["BINDING_NAME_LOCKMOUSELOOK"],
-          order = 6,
-        },
-        lockDescription = {
-          type = "description",
-          name = "Lock the mouselook state on key up.",
-          width = "double",
-          fontSize = "medium",
-          order = 7,
-        },
-        lock = {
-          type = "keybinding",
-          name = "",
-          desc = "Lock the mouselook state on key up.",
-          width = "half",
-          set = function(info, key)
-                  local oldKey = (_G.GetBindingKey("LOCKMOUSELOOK"))
-                  if oldKey then _G.SetBinding(oldKey) end
-                  _G.SetBinding(key, "LOCKMOUSELOOK")
-                  _G.SaveBindings(_G.GetCurrentBindingSet())
-                end,
-          get = function(info) return (_G.GetBindingKey("LOCKMOUSELOOK")) end,
-          order = 8,
-        },
-        unlockHeader = {
-          type = "header",
-          name = _G["BINDING_NAME_UNLOCKMOUSELOOK"],
-          order = 9,
-        },
-        unlockDescription = {
-          type = "description",
-          name = "Unlock the mouselook state on key up.",
-          width = "double",
-          fontSize = "medium",
-          order = 10,
-        },
-        unlock = {
-          type = "keybinding",
-          name = "",
-          desc = "Unlock the mouselook state on key up.",
-          width = "half",
-          set = function(info, key)
-                  local oldKey = (_G.GetBindingKey("UNLOCKMOUSELOOK"))
-                  if oldKey then _G.SetBinding(oldKey) end
-                  _G.SetBinding(key, "UNLOCKMOUSELOOK")
-                  _G.SaveBindings(_G.GetCurrentBindingSet())
-                end,
-          get = function(info) return (_G.GetBindingKey("UNLOCKMOUSELOOK")) end,
-          order = 11,
-        },
-        button1Header = {
-          type = "header",
-          name = "Mouselook Button Overrides",
-          order = 12,
-        },
-        overrideEnableToggle = {
+        overrideBindingsToggle = {
           type = "toggle",
-          name = "Enable override bindings",
+          name = "Use override bindings",
           width = "full",
           set = setUseOverrideBindings,
           get = getUseOverrideBindings,
-          order = 21,
+          order = 120,
         },
-        BUTTON1Description = {
+        bindingTableHeader = {
+          type = "header",
+          name = "Binding table",
+          order = 130,
+        },
+        bindingTableDescription = {
           type = "description",
-          name = "Mouselook Override BUTTON1",
-          width = "normal",
-          fontSize = "small",
-          order = 30,
+          name = "You can either create a new override binding by entering a binding key " ..
+                 "(|cFF3366BBhttp://wowprogramming.com/docs/api_types#binding|r) in the " ..
+                 "editbox, or select an existing override binding from the dropdown menu to " ..
+                 "review or modify it.",
+          fontSize = "medium",
+          order = 140,
         },
-        BUTTON1 = {
+        newBindingInput = {
+          type = "input",
+          name = "New",
+          desc = "Create a new mouselook override binding.",
+          set = function(info, val)
+                  val = _G.string.upper(val)
+                  if not db.profile.mouseOverrideBindings[val] then
+                    db.profile.mouseOverrideBindings[val] = ""
+                    --overrideKeys[#overrideKeys + 1] = val
+                    _G.table.insert(overrideKeys, val)
+                    -- http://stackoverflow.com/questions/2038418/associatively-sorting-a-table-by-v
+                    _G.table.sort(overrideKeys, function(a, b)
+                      return a < b
+                    end)
+                  end
+                  for i = 0, #overrideKeys do
+                    if overrideKeys[i] == val then
+                      selectedKey = i
+                      return
+                    end
+                  end
+                end,
+          get = nil,
+          order = 150,
+        },
+        bindingTableDropdown = {
           type = "select",
           style = "dropdown",
-          name = "",
-          desc = "Select the mouselook override for button 1.",
+          name = "Key",
+          desc = "Select one of your existing mouselook override bindings.",
           width = "normal",
-          values = getOverrideBindingChoices,
-          set = setOverrideBinding,
-          get = getOverrideBinding,
-          disabled = function()
-            return not getUseOverrideBindings()
+          values = function() return overrideKeys end,
+          set = function(info, value)
+            selectedKey = value
           end,
-          order = 31,
+          get = function(info)
+            return selectedKey
+          end,
+          order = 160,
         },
-        BUTTON1Spacing = {type = "description", order = 39, name = ""},
-        BUTTON2Description = {
-          type = "description",
-          name = "Mouselook Override BUTTON2",
-          width = "normal",
-          order = 40,
+        separator1 = {
+          type = "header",
+          name = "",
+          order = 170,
         },
-        BUTTON2 = {
+        suggestedCommands = {
           type = "select",
           style = "dropdown",
-          name = "",
-          desc = "Select the mouselook override for button 2.",
-          values = getOverrideBindingChoices,
-          set = setOverrideBinding,
-          get = getOverrideBinding,
-          disabled = function()
-            return not getUseOverrideBindings()
-          end,
-          order = 41,
+          name = "Suggestions",
+          desc = "You can select one of these suggested actions and have the corresponding " ..
+                 "command inserted above.",
+          values = function(info) return suggestedCommands end,
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          set = function(info, val)
+              db.profile.mouseOverrideBindings[overrideKeys[selectedKey]] = val
+              applyOverrideBindings()
+            end,
+          get = function(info)
+              return db.profile.mouseOverrideBindings[overrideKeys[selectedKey]]
+            end,
+          order = 180,
         },
-        BUTTON2Spacing = {type = "description", order = 49, name = ""},
-        BUTTON3Description = {
+        commandInput = {
+          name = "Command",
+          desc = "The command to perform; can be any name attribute value of a " ..
+                 "Bindings.xml-defined binding, or an action command string.",
+          type = "input",
+          width = "double",
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          set = function(info, val)
+              if val == "" then val = nil end
+              db.profile.mouseOverrideBindings[overrideKeys[selectedKey]] = val
+              applyOverrideBindings()
+            end,
+          get = function(info)
+              return db.profile.mouseOverrideBindings[overrideKeys[selectedKey]]
+            end,
+          order = 190,
+        },
+        commandDescription = {
+          -- http://en.wikipedia.org/wiki/Help:Link_color
+          name = "The command assigned to the key selected above. Can be any name attribute " ..
+                 "value of a Bindings.xml-defined binding, or an action command string. See " ..
+                 "|cFF3366BBhttp://wowpedia.org/API_SetBinding|r for more information.\n" ..
+                 "    You can select one of the suggested actions and have the corresponding " ..
+                 "command inserted above.",
           type = "description",
-          name = "Mouselook Override BUTTON3",
-          width = "normal",
-          order = 50,
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          fontSize = "medium",
+          order = 200,
         },
-        BUTTON3 = {
-          type = "select",
-          style = "dropdown",
+        spacer1 = {
+          type = "description",
           name = "",
-          desc = "Select the mouselook override for button 3.",
-          width = "normal",
-          values = getOverrideBindingChoices,
-          set = setOverrideBinding,
-          get = getOverrideBinding,
-          disabled = function()
-            return not getUseOverrideBindings()
-          end,
-          order = 51,
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          order = 210,
+        },
+        clearBindingButton = {
+          type = "execute",
+          name = "Delete",
+          desc = "Delete the selected override binding.",
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          width = "half",
+          confirm = true,
+          confirmText = "This can't be undone. Continue?",
+          func = function()
+              _G.SetMouselookOverrideBinding(overrideKeys[selectedKey], nil)
+              db.profile.mouseOverrideBindings[overrideKeys[selectedKey]] = nil
+              -- This wont shift down the remaining integer keys: overrideKeys[selectedKey] = nil
+              _G.table.remove(overrideKeys, selectedKey)
+              selectedKey = 0
+            end,
+          order = 220,
+        },
+        deleteBindingDescription = {
+          type = "description",
+          name = "    Clear the selected override binding.",
+          hidden = function() return not selectedKey or not overrideKeys[selectedKey] end,
+          width = "double",
+          fontSize = "medium",
+          order = 230,
         },
       },
     },
     advanced = {
       type = "group",
       name = "Advanced",
-      order = 4,
+      order = 120,
       args = {
         header1 = {
           type = "header",
@@ -561,8 +484,8 @@ local options = {
                  "i.e., the text after whichever set of conditions applied (string), " ..
                  "if any, and otherwise nil.\n\n" ..
                  "Additionally, if it was called in response to an event the name " ..
-                 "of the event (string) and the event's specific arguments will " ..
-                 "be passed (See: wowprogramming.com/docs/events).\n" ..
+                 "of the event (string) and the event's specific arguments will be passed " ..
+                 "(See |cFF3366BBhttp://wowprogramming.com/docs/events|r).\n" ..
                  "    Mouselook will be enabled if true is returned and disabled otherwise.",
           fontSize = "medium",
           order = 1,
@@ -616,8 +539,6 @@ local options = {
         advanced1 = {
           type = "group",
           name = "Lua chunk",
-          inline = true,
-          order = 4,
           args = {
             header1 = {
               type = "header",
@@ -660,12 +581,123 @@ local options = {
         },
       },
     },
+    binds = {
+      type = "group",
+      name = "Keybindings",
+      order = 130,
+      args = {
+        toggleHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_TOGGLEMOUSELOOK"],
+          order = 0,
+        },
+        toggleDescription = {
+          type = "description",
+          name = "Toggles the normal mouselook state.",
+          width = "double",
+          fontSize = "medium",
+          order = 1,
+        },
+        toggle = {
+          type = "keybinding",
+          name = "",
+          desc = "Toggles the normal mouselook state.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("TOGGLEMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "TOGGLEMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("TOGGLEMOUSELOOK")) end,
+          order = 2,
+        },
+        invertHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_INVERTMOUSELOOK"],
+          order = 3,
+        },
+        invertDescription = {
+          type = "description",
+          name = "Inverts mouselook while the key is being held.",
+          width = "double",
+          fontSize = "medium",
+          order = 4,
+        },
+        invert = {
+          type = "keybinding",
+          name = "",
+          desc = "Inverts mouselook while the key is being held.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("INVERTMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "INVERTMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("INVERTMOUSELOOK")) end,
+          order = 5,
+        },
+        lockHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_LOCKMOUSELOOK"],
+          order = 6,
+        },
+        lockDescription = {
+          type = "description",
+          name = "Sets the normal mouselook state to enabled.",
+          width = "double",
+          fontSize = "medium",
+          order = 7,
+        },
+        lock = {
+          type = "keybinding",
+          name = "",
+          desc = "Sets the normal mouselook state to enabled.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("LOCKMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "LOCKMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("LOCKMOUSELOOK")) end,
+          order = 8,
+        },
+        unlockHeader = {
+          type = "header",
+          name = _G["BINDING_NAME_UNLOCKMOUSELOOK"],
+          order = 9,
+        },
+        unlockDescription = {
+          type = "description",
+          name = "Sets the normal mouselook state to disabled.",
+          width = "double",
+          fontSize = "medium",
+          order = 10,
+        },
+        unlock = {
+          type = "keybinding",
+          name = "",
+          desc = "Sets the normal mouselook state to disabled.",
+          width = "half",
+          set = function(info, key)
+                  local oldKey = (_G.GetBindingKey("UNLOCKMOUSELOOK"))
+                  if oldKey then _G.SetBinding(oldKey) end
+                  _G.SetBinding(key, "UNLOCKMOUSELOOK")
+                  _G.SaveBindings(_G.GetCurrentBindingSet())
+                end,
+          get = function(info) return (_G.GetBindingKey("UNLOCKMOUSELOOK")) end,
+          order = 11,
+        },
+      },
+    },
   },
 }
 
---------------------------------------------------------------------------------
--- </ in-game configuration UI code > ------------------------------------------
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- </ in-game configuration UI code > --------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 
 databaseDefaults = {
   ["profile"] = {
@@ -710,22 +742,51 @@ function MouselookHandler:OnInitialize()
     setCustomFunction(nil, db.profile.customFunction)
   end
 
-  -- See: wowace.com/addons/ace3/pages/getting-started/#w-registering-the-options
-  AceConfig:RegisterOptionsTable("MouselookHandler", options)
+  for k, _ in _G.pairs(db.profile.mouseOverrideBindings) do
+    if not (_G.type(k) == "string") then
+      db.profile.mouseOverrideBindings[k] = nil
+    else
+      _G.table.insert(overrideKeys, (k))
+    end
+  end
+  _G.table.sort(overrideKeys)
 
-  local profiles = AceDBOptions:GetOptionsTable(self.db)
-  AceConfigRegistry:RegisterOptionsTable("MouselookHandler_Profiles", profiles)
+  options.args.profiles = AceDBOptions:GetOptionsTable(self.db)
+  options.args.profiles.order = 121
+  local function changeFontSize(optionsGroup)
+    --_G.assert(optionsGroup.type == "group")
+    --_G.assert(optionsGroup.args)
+    for k, v in _G.pairs(optionsGroup.args) do
+      if _G.type(v) == "table" then
+        if v.type and v.type == "description" then
+          optionsGroup.args[k].fontSize = "medium"
+        elseif v.type and v.type == "group" then
+          changeFontSize(v)
+        end
+      end
+    end
+  end
+  changeFontSize(options.args.profiles)
+  options.args.profiles.args.addedHeader = {
+    type = "header",
+    name = "Profiles",
+    order = 0,
+  },
 
-  local configFrame = AceConfigDialog:AddToBlizOptions("MouselookHandler", "MouselookHandler", nil, "general")
-  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.binds.name, "MouselookHandler", "binds")
-  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.advanced.name, "MouselookHandler", "advanced")
-  AceConfigDialog:AddToBlizOptions("MouselookHandler_Profiles", profiles.name, "MouselookHandler")
+  -- See wowace.com/addons/ace3/pages/getting-started/#w-registering-the-options.
+  AceConfig:RegisterOptionsTable(modName, options)
+  AceConfigRegistry:RegisterOptionsTable("MouselookHandler_Profiles", options.args.profiles)
+  AceConfigDialog:SetDefaultSize(modName, 800, 600)
+
+  -- http://www.wowace.com/addons/ace3/pages/api/ace-config-dialog-3-0/
+  local configFrame = AceConfigDialog:AddToBlizOptions("MouselookHandler", "MouselookHandler")
   configFrame.default = function()
     self.db:ResetProfile()
   end
 
   --------------------------------------------------------------------------------------------------
-  stateHandler = _G.CreateFrame("Frame", modName .. "stateHandler", UIParent, "SecureHandlerStateTemplate")
+  stateHandler = _G.CreateFrame("Frame", modName .. "stateHandler", UIParent,
+    "SecureHandlerStateTemplate")
   function stateHandler:onMouselookState(newstate)
     _G["MouselookHandler"]["clauseText"] = newstate
     _G["MouselookHandler"].update()
@@ -746,9 +807,13 @@ function MouselookHandler:OnInitialize()
 
   local function toggleOptionsUI()
     if not _G.InCombatLockdown() then
-      _G.InterfaceOptionsFrame_OpenToCategory(configFrame)
-      -- Called twice to workaround UI bug
-      _G.InterfaceOptionsFrame_OpenToCategory(configFrame)
+      -- Sorry pwoodworth, but I prefer a standalone options panel that can be moved and resized.
+      -- The options are still available from the Blizzard panel, though.
+      AceConfigDialog:Open("MouselookHandler")
+      -- Call twice to workaround a Blizzard bug (the options panel isn't opened at the requested
+      -- category the first time).
+      --_G.InterfaceOptionsFrame_OpenToCategory(configFrame)
+      --_G.InterfaceOptionsFrame_OpenToCategory(configFrame)
       db.profile.newUser = false
     end
   end
@@ -759,8 +824,8 @@ function MouselookHandler:OnInitialize()
 end
 
 function MouselookHandler:RefreshDB()
-    MouselookHandler:Print("Refreshing DB Profile")
-    applyUseOverrideBindings()
+    --MouselookHandler:Print("Refreshing DB Profile")
+    applyOverrideBindings()
 end
 
 -- Called by AceAddon.
@@ -773,3 +838,4 @@ function MouselookHandler:OnDisable()
   -- Nothing here yet.
 end
 
+-- vim: tw=100 sw=2 expandtab
