@@ -760,15 +760,15 @@ function MouselookHandler:OnInitialize()
   end
 
   -- See: wowace.com/addons/ace3/pages/getting-started/#w-registering-the-options
-  AceConfig:RegisterOptionsTable(modName, options)
+  AceConfig:RegisterOptionsTable("MouselookHandler", options)
 
   local profiles = AceDBOptions:GetOptionsTable(self.db)
-  AceConfigRegistry:RegisterOptionsTable(modName .. "_Profiles", profiles)
+  AceConfigRegistry:RegisterOptionsTable("MouselookHandler_Profiles", profiles)
 
-  local configFrame = AceConfigDialog:AddToBlizOptions(modName, "MouselookHandler", nil, "general")
-  AceConfigDialog:AddToBlizOptions(modName, options.args.binds.name, "MouselookHandler", "binds")
-  AceConfigDialog:AddToBlizOptions(modName, options.args.advanced.name, "MouselookHandler", "advanced")
-  AceConfigDialog:AddToBlizOptions(modName .. "_Profiles", profiles.name, "MouselookHandler")
+  local configFrame = AceConfigDialog:AddToBlizOptions("MouselookHandler", "MouselookHandler", nil, "general")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.binds.name, "MouselookHandler", "binds")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler", options.args.advanced.name, "MouselookHandler", "advanced")
+  AceConfigDialog:AddToBlizOptions("MouselookHandler_Profiles", profiles.name, "MouselookHandler")
   configFrame.default = function()
     self.db:ResetProfile()
   end
