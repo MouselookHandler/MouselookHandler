@@ -700,6 +700,9 @@ local options = {
 ----------------------------------------------------------------------------------------------------
 
 databaseDefaults = {
+  ["global"] = {
+    ["version"] = nil,
+  },
   ["profile"] = {
     ["newUser"] = true,
     ["useSpellTargetingOverride"] = true,
@@ -721,11 +724,57 @@ function MouselookHandler:predFun(enabled, inverted, clauseText, event, ...)
 end
 ]]
 
+local function migrateLegacyGlobalPreferences()
+  local curProfile = db:GetCurrentProfile()
+  local legacyGlobalKeys = {
+    "useSpellTargetingOverride",
+    "useDeferWorkaround",
+    "useOverrideBindings",
+    "macroText",
+    "eventList",
+    "customFunction",
+  }
+
+  -- First check if they have already customized the default profile
+  local defaultProfileUnmodified = false
+  if curProfile == "Default" then
+    defaultProfileUnmodified = true
+    for _, key in _G.pairs(legacyGlobalKeys) do
+      if db.profile[key] ~= databaseDefaults.profile[key] then
+        defaultProfileUnmodified = false
+      end
+    end
+  end
+
+  -- If they have any global settings which don't match the default put it in a Legacy profile
+  for _, key in _G.pairs(legacyGlobalKeys) do
+    if db.global[key] ~= nil and db.global[key] ~= databaseDefaults.profile[key] then
+      db:SetProfile("Legacy")
+      db.profile[key] = db.global[key]
+    end
+    db.global[key] = nil
+  end
+
+  if db:GetCurrentProfile() == "Legacy" then
+    db:SetProfile(curProfile)
+    -- If the default profile is unmodified then copy Legacy over
+    if defaultProfileUnmodified then
+      db:CopyProfile("Legacy")
+    end
+  end
+end
+
 -- Called by AceAddon on ADDON_LOADED?
 -- See: wowace.com/addons/ace3/pages/getting-started/#w-standard-methods
 function MouselookHandler:OnInitialize()
   -- The ".toc" need say "## SavedVariables: MouselookHandlerDB".
   self.db = LibStub("AceDB-3.0"):New("MouselookHandlerDB", databaseDefaults, true)
+
+  local currentVersion = _G.GetAddOnMetadata(modName, "Version")
+  if not self.db.global.version then
+    migrateLegacyGlobalPreferences()
+  end
+  self.db.global.version = currentVersion
 
   if db.profile.newUser then
     MouselookHandler:Print("This seems to be your first time using this AddOn. To get started " ..
