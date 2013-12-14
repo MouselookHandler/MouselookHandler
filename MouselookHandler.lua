@@ -725,7 +725,8 @@ end
 ]]
 
 local function migrateLegacyGlobalPreferences()
-  local curProfile = db:GetCurrentProfile()
+  -- None of the values of these keys in db.global are tables, so we don't need a deep copy
+  -- (http://lua-users.org/wiki/CopyTable).
   local legacyGlobalKeys = {
     "useSpellTargetingOverride",
     "useDeferWorkaround",
@@ -735,32 +736,16 @@ local function migrateLegacyGlobalPreferences()
     "customFunction",
   }
 
-  -- First check if they have already customized the default profile
-  local defaultProfileUnmodified = false
+  local curProfile = db:GetCurrentProfile()
   if curProfile == "Default" then
-    defaultProfileUnmodified = true
+    -- If they have any global settings which don't match the default, copy them.
     for _, key in _G.pairs(legacyGlobalKeys) do
-      if db.profile[key] ~= databaseDefaults.profile[key] then
-        defaultProfileUnmodified = false
+      if db.global[key] and db.global[key] ~= databaseDefaults.profile[key] then
+        db.profile[key] = db.global[key]
       end
+      db.global[key] = nil
     end
-  end
-
-  -- If they have any global settings which don't match the default put it in a Legacy profile
-  for _, key in _G.pairs(legacyGlobalKeys) do
-    if db.global[key] ~= nil and db.global[key] ~= databaseDefaults.profile[key] then
-      db:SetProfile("Legacy")
-      db.profile[key] = db.global[key]
-    end
-    db.global[key] = nil
-  end
-
-  if db:GetCurrentProfile() == "Legacy" then
-    db:SetProfile(curProfile)
-    -- If the default profile is unmodified then copy Legacy over
-    if defaultProfileUnmodified then
-      db:CopyProfile("Legacy")
-    end
+    db.global.newUser = nil
   end
 end
 
@@ -778,8 +763,7 @@ function MouselookHandler:OnInitialize()
 
   if db.profile.newUser then
     MouselookHandler:Print("This seems to be your first time using this AddOn. To get started " ..
-      "you should bring up the configuration UI (/mh) and assign keys to the two actions " ..
-      "provided.")
+      "you should bring up the configuration UI (/mh) and assign keys to toggle mouselook.")
   end
 
   self.db.RegisterCallback(self, "OnProfileChanged", "RefreshDB")
