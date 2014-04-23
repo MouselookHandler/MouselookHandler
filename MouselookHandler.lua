@@ -45,9 +45,11 @@ end
 -- saved state.
 local function rematch()
   if defer() then return end
+
   if db.profile.useSpellTargetingOverride and _G.SpellIsTargeting() then
     MouselookStop(); return
   end
+
   if turnOrActionActive or cameraOrSelectOrMoveActive then return end
 
   if not IsMouselooking() then
@@ -62,10 +64,11 @@ local function rematch()
 end
 
 function update(event, ...)
-  --shouldMouselook = customFunction(enabled, inverted, clauseText, event, ...)
   local shouldMouselookOld = shouldMouselook
   shouldMouselook = MouselookHandler:predFun(enabled, inverted, clauseText, event, ...)
-  if shouldMouselook ~= shouldMouselookOld then rematch() end
+  if shouldMouselook ~= shouldMouselookOld then
+    rematch()
+  end
 end
 
 function invert()
@@ -122,6 +125,20 @@ _G.hooksecurefunc("CameraOrSelectOrMoveStop", function()
   cameraOrSelectOrMoveActive = false
 end)
 
+function handlerFrame:CINEMATIC_START()
+  self:SetScript("OnUpdate", nil)
+  if _G.InCinematic() and _G.IsMouselooking() then
+    MouselookStop(); return
+  end
+end
+
+function handlerFrame:CINEMATIC_STOP()
+  self:SetScript("OnUpdate", self.onUpdate)
+  if _G.InCinematic() and _G.IsMouselooking() then
+    MouselookStop(); return
+  end
+end
+
 function handlerFrame:PLAYER_ENTERING_WORLD()
   rematch()
 end
@@ -136,6 +153,8 @@ function handlerFrame:ADDON_LOADED()
   self.ADDON_LOADED = nil
 end
 
+handlerFrame:RegisterEvent("CINEMATIC_START")
+handlerFrame:RegisterEvent("CINEMATIC_STOP")
 handlerFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 handlerFrame:RegisterEvent("PLAYER_LOGIN")
 handlerFrame:RegisterEvent("ADDON_LOADED")
