@@ -134,9 +134,7 @@ end
 
 function handlerFrame:CINEMATIC_STOP()
   self:SetScript("OnUpdate", self.onUpdate)
-  if _G.InCinematic() and _G.IsMouselooking() then
-    MouselookStop(); return
-  end
+  rematch()
 end
 
 function handlerFrame:PLAYER_ENTERING_WORLD()
