@@ -125,18 +125,6 @@ _G.hooksecurefunc("CameraOrSelectOrMoveStop", function()
   cameraOrSelectOrMoveActive = false
 end)
 
-function handlerFrame:CINEMATIC_START()
-  self:SetScript("OnUpdate", nil)
-  if _G.InCinematic() and _G.IsMouselooking() then
-    MouselookStop(); return
-  end
-end
-
-function handlerFrame:CINEMATIC_STOP()
-  self:SetScript("OnUpdate", self.onUpdate)
-  rematch()
-end
-
 function handlerFrame:PLAYER_ENTERING_WORLD()
   rematch()
 end
@@ -147,12 +135,49 @@ end
 
 function handlerFrame:ADDON_LOADED()
   --_G.print("MouselookHandler loaded!")
+
+  -- http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/CinematicFrame.lua
+  -- http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/CinematicFrame.xml
+  -- http://wowprogramming.com/docs/widgets/MovieFrame
+  -- http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/MovieFrame.lua
+  -- http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/MovieFrame.xml
+
+  --[[
+  _G.assert(_G.CinematicFrame)
+  _G.assert(_G.CinematicFrameCloseDialog)
+  --_G.assert(_G.CinematicFrame.closeDialog)
+  _G.assert(_G.MovieFrame)
+  _G.assert(_G.MovieFrame.CloseDialog)
+  ]]
+
+  _G.CinematicFrameCloseDialog:HookScript("OnShow", function(self)
+    handlerFrame:SetScript("OnUpdate", nil)
+    if _G.IsMouselooking() then
+      _G.MouselookStop()
+    end
+  end)
+
+  _G.MovieFrame.CloseDialog:HookScript("OnShow", function(self)
+    handlerFrame:SetScript("OnUpdate", nil)
+    if _G.IsMouselooking() then
+      _G.MouselookStop()
+    end
+  end)
+
+  _G.CinematicFrameCloseDialog:HookScript("OnHide", function(self)
+    handlerFrame:SetScript("OnUpdate", handlerFrame.onUpdate)
+    rematch()
+  end)
+
+  _G.MovieFrame.CloseDialog:HookScript("OnHide", function(self)
+    handlerFrame:SetScript("OnUpdate", handlerFrame.onUpdate)
+    rematch()
+  end)
+
   self:UnregisterEvent("ADDON_LOADED")
   self.ADDON_LOADED = nil
 end
 
-handlerFrame:RegisterEvent("CINEMATIC_START")
-handlerFrame:RegisterEvent("CINEMATIC_STOP")
 handlerFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 handlerFrame:RegisterEvent("PLAYER_LOGIN")
 handlerFrame:RegisterEvent("ADDON_LOADED")
@@ -888,4 +913,4 @@ function MouselookHandler:OnDisable()
   -- Nothing here yet.
 end
 
--- vim: tw=100 sw=2 expandtab
+-- vim: tw=100 sw=2 et
