@@ -105,6 +105,9 @@ end)
 
 function handlerFrame:onUpdate(...)
   rematch()
+  --_G.assert(_G.GetBindingAction("BUTTON1", true))
+  --_G.print(_G.GetMouseFocus():GetName())
+  --_G.print(_G.IsMouseButtonDown(1), _G.IsMouseButtonDown(2))
 end
 
 handlerFrame:SetScript("OnUpdate", handlerFrame.onUpdate)
