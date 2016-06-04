@@ -46,11 +46,11 @@ end
 local function rematch()
   if defer() then return end
 
+  if turnOrActionActive or cameraOrSelectOrMoveActive then return end
+
   if db.profile.useSpellTargetingOverride and _G.SpellIsTargeting() then
     MouselookStop(); return
   end
-
-  if turnOrActionActive or cameraOrSelectOrMoveActive then return end
 
   if not IsMouselooking() then
     if shouldMouselook and not _G.GetCurrentKeyBoardFocus() then
