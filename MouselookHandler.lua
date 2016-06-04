@@ -916,4 +916,4 @@ function MouselookHandler:OnDisable()
   -- Nothing here yet.
 end
 
--- vim: tw=100 sw=2 et
+-- vim: tw=100 sts=-1 sw=2 et
