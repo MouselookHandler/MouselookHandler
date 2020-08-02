@@ -1,4 +1,4 @@
-## Interface: 70100
+## Interface: 80300
 ## Title: MouselookHandler
 ## Notes: Allows controlling when mouselook is started and stopped.
 ## Author: meribold (Lukas Waymann) and pwoodworth (Patrick Woodworth)
