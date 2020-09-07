@@ -868,7 +868,6 @@ function MouselookHandler:OnInitialize()
   function stateHandler:onMouselookState(newstate)
     _G["MouselookHandler"]["clauseText"] = newstate
     _G["MouselookHandler"].update()
-    _G["MouselookHandler"]["clauseText"] = nil
   end
   stateHandler:SetAttribute("_onstate-mouselookstate", [[
     self:CallMethod("onMouselookState", newstate)
