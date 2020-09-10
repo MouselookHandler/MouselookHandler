@@ -1,18 +1,18 @@
 <Bindings>
-  <Binding name="INVERTMOUSELOOK" description="Inverts mouselook while the key is being held." runOnUp="true" header="MOUSELOOKHANDLER_I">
+  <Binding name="INVERTMOUSELOOK" description="Inverts mouselook while the key is being held." runOnUp="true" header="MOUSELOOKHANDLER">
     if keystate == "down" then
       MouselookHandler.invert()
     elseif keystate == "up" then
       MouselookHandler.revert()
     end
   </Binding>
-  <Binding name="TOGGLEMOUSELOOK" description="Toggles the default mouselook state on key up." header="MOUSELOOKHANDLER">
+  <Binding name="TOGGLEMOUSELOOK" description="Toggles the default mouselook state on key up.">
     MouselookHandler.toggle()
   </Binding>
-  <Binding name="LOCKMOUSELOOK" description="Lock the mouselook state on key up." header="MOUSELOOKHANDLER_L">
+  <Binding name="LOCKMOUSELOOK" description="Lock the mouselook state on key up.">
     MouselookHandler.lock()
   </Binding>
-  <Binding name="UNLOCKMOUSELOOK" description="Unlock the mouselook state on key up." header="MOUSELOOKHANDLER_U">
+  <Binding name="UNLOCKMOUSELOOK" description="Unlock the mouselook state on key up.">
     MouselookHandler.unlock()
   </Binding>
 </Bindings>
