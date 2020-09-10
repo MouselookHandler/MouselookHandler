@@ -1,12 +1,11 @@
 ## Interface: 80300
 ## Title: MouselookHandler
 ## Notes: Allows controlling when mouselook is started and stopped.
-## Author: meribold (Lukas Waymann) and pwoodworth (Patrick Woodworth)
+## Author: Lukas Waymann (meribold) with contributions from Patrick Woodworth
 ## Version: 1.3.10
 ## SavedVariables: MouselookHandlerDB
 ## OptionalDeps: Ace3
 ## X-Embeds: Ace3
 
 embeds.xml
-
 MouselookHandler.lua
