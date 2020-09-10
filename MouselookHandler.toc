@@ -2,7 +2,7 @@
 ## Title: MouselookHandler
 ## Notes: Allows controlling when mouselook is started and stopped.
 ## Author: Lukas Waymann (meribold) with contributions from Patrick Woodworth
-## Version: 1.3.10
+## Version: 1.3.11
 ## SavedVariables: MouselookHandlerDB
 ## OptionalDeps: Ace3
 ## X-Embeds: Ace3
