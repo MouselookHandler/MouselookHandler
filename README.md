@@ -8,6 +8,6 @@ You can download MouselookHandler [here][tags], from [WoWInterface][], or from
 
 [mouselook]: https://en.wikipedia.org/wiki/Free_look
 [RSI]: https://en.wikipedia.org/wiki/Repetitive_strain_injury
-[tags]: https://github.com/meribold/MouselookHandler/tags
+[tags]: https://github.com/MouselookHandler/MouselookHandler/tags
 [WoWInterface]: https://www.wowinterface.com/downloads/info25676-MouselookHandler.html
 [CurseForge]: https://www.curseforge.com/wow/addons/mouselookhandler
