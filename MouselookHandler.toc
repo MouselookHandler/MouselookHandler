@@ -1,5 +1,3 @@
-## Interface: 90001
-## classic ## Interface: 11305
 ## Title: MouselookHandler
 ## Notes: Allows controlling when mouselook is started and stopped.
 ## Author: Lukas Waymann (meribold) with contributions from Patrick Woodworth
