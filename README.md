@@ -1,5 +1,7 @@
 ![](https://cf.way2muchnoise.eu/full_59300_downloads.svg)
 
+<img src="https://cf.way2muchnoise.eu/full_59300_downloads.svg">
+
 MouselookHandler is an interface addon for the World of Warcraft MMOG that adapts the game
 controls to enable using [mouselook][] without the [RSI][]-inducing requirement of
 perpetually pressing the right mouse button.  This makes the controls resemble those of
