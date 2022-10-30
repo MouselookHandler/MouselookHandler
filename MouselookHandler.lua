@@ -215,7 +215,7 @@ end
 
 local suggestedCommands = {}
 for _, v in _G.ipairs({"UNLOCKMOUSELOOK", "MOVEFORWARD", "MOVEBACKWARD", "TOGGLEAUTORUN",
-  "STRAFELEFT", "STRAFERIGHT"}) do
+  "STRAFELEFT", "STRAFERIGHT", "ACTIONBUTTON1", "ACTIONBUTTON2"}) do
   suggestedCommands[v] = _G.GetBindingText(v, "BINDING_NAME_")
 end
 
@@ -754,8 +754,8 @@ databaseDefaults = {
     ["useDeferWorkaround"] = true,
     ["useOverrideBindings"] = true,
     ["mouseOverrideBindings"] = {
-        ["BUTTON1"] = "STRAFELEFT",
-        ["BUTTON2"] = "STRAFERIGHT",
+        ["BUTTON1"] = "ACTIONBUTTON1",
+        ["BUTTON2"] = "ACTIONBUTTON2",
     },
     macroText = "",
     eventList = ""
