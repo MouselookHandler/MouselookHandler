@@ -800,7 +800,7 @@ function MouselookHandler:OnInitialize()
   -- The ".toc" need say "## SavedVariables: MouselookHandlerDB".
   self.db = LibStub("AceDB-3.0"):New("MouselookHandlerDB", databaseDefaults, true)
 
-  local currentVersion = _G.GetAddOnMetadata(modName, "Version")
+  local currentVersion = _G.C_AddOns.GetAddOnMetadata(modName, "Version")
   if not self.db.global.version then
     migrateLegacyGlobalPreferences()
   end
